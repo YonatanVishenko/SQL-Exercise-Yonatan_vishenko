@@ -1,0 +1,77 @@
+---
+title: "SQL Exercise"
+author: "Yonatan Vishenko"
+format: html
+editor: visual
+toc: True
+---
+
+## setting up the db:
+
+```{r}
+con_chocolate <- DBI::dbConnect(drv = RSQLite::SQLite(),
+dbname = "chocolate.sqlite")
+
+```
+
+## Question 1:
+
+1.  The query asks for the Names of the salesreps and their total amount of candy bars sold in the year 2022. The and result should be a table containing the columns:
+
+    -   Name: The names of all the salesreps who joined during 2010
+    -   total_candy_bars_sold: The sum of all the candy bars each of these salesreps sold throughout 2022. The query uses INNER JOIN to match the names of the salesreps from the table 'salesreps' and the amount of candy they sold from the table 'orders'.
+
+2.  
+
+```{sql,connection = con_chocolate, output.var = "q_1_df"}
+SELECT salesreps.Name, SUM(orders.amount) AS total_candy_bars_sold
+FROM salesreps INNER JOIN orders USING (srid)
+WHERE
+orders.sale_date BETWEEN '2022-01-01' AND '2022-12-31'
+AND salesreps.year_joined = 2010
+GROUP BY salesreps.Name;
+```
+
+```{r}
+q_1_df
+```
+
+There are three salesreps that joind in 2010;
+
+In 2022 Tootle, Naudia sold 1825, al-Farrah, Ghaaliba sold 1866 and al-Sadri, Saamyya sold 1784 candy bars.
+
+## Question 2:
+
+```{sql,connection = con_chocolate, output.var = "q_2_df"}
+SELECT DISTINCT count(cid) AS total_orders,
+                count(cid) OVER (PARTITION BY count(cid)) AS N
+FROM orders
+GROUP BY cid
+ORDER BY total_orders
+
+```
+
+## Question 3:
+
+```{sql, connection = con_chocolate, output.var = "q_3_df"}
+SELECT salesreps.Name, products.candy_names
+FROM orders INNER JOIN products USING(pid)
+INNER JOIN salesreps ON orders.srid = salesreps.srid
+WHERE orders.sale_date BETWEEN '2022-04-01' AND '2022-06-30' 
+      AND orders.pid IN
+      (select pid
+      FROM orders 
+      WHERE sale_date BETWEEN '2022-01-01' AND '2022-03-31'
+      GROUP BY pid
+      order by sum(amount) desc
+      limit(1))
+GROUP BY orders.srid
+ORDER BY sum(orders.amount) DESC
+LIMIT(1)
+```
+
+```{r}
+q_3_df
+```
+
+The candy bar with the highest number of total orders in the first quarter of 2022 is 'Coconut Crave'. And the name of the sales rep that sold the most of those candy bars in the second quarter of 2022 is 'Hess, Christopher'.
